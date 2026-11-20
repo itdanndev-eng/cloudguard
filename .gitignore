@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+secrets/
+output/
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+*.pem
+*.key

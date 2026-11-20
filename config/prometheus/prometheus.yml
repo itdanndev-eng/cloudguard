@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 3s
+  evaluation_interval: 5s
+  external_labels:
+    project: cloudguard-original
+rule_files: ["/etc/prometheus/rules.yml"]
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: servicedesk-metrics
+    static_configs:
+      - targets: ["servicedesk:8000"]
+        labels: {service: servicedesk}
+  - job_name: servicedesk-http
+    metrics_path: /probe
+    params: {module: [servicedesk_health]}
+    static_configs:
+      - targets: ["http://servicedesk:8000/health"]
+        labels:
+          service: servicedesk
+          container: cloudguard-servicedesk
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: probe:9115

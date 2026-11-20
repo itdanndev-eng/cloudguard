@@ -1,0 +1,127 @@
+{
+  "aws_deployment_status": "proposed only",
+  "environment": "Local Docker Desktop, Linux ARM64 containers",
+  "benchmark": {
+    "endpoint": "http://127.0.0.1:18000/api/tickets?status=open&limit=20",
+    "method": "GET",
+    "data": "Synthetic read-only IT service tickets",
+    "workload": "Closed-loop HTTP/1.1 keep-alive, no think time",
+    "concurrency": 4,
+    "requested_duration_seconds": 20.0,
+    "measured_duration_seconds": 20.030720417,
+    "started_at_utc": "2026-11-20T09:21:21.237588Z",
+    "finished_at_utc": "2026-11-20T09:21:41.267885Z",
+    "requests": 25641,
+    "errors": 0,
+    "throughput_requests_per_second": 1280.0837646477544,
+    "latency_ms": {
+      "average": 3.1233946421746377,
+      "p95": 3.5753750000000473,
+      "p99": 44.01029099999931
+    },
+    "latency_definition": "Client round-trip over all attempts; nearest-rank percentiles",
+    "probe_availability": {
+      "successful_probes": 4,
+      "total_observed_probes": 4,
+      "availability_percent": 100.0,
+      "definition": "successful independent HTTP probes / observed probes in the stated UTC window",
+      "limitation": "Short local observation; missing telemetry is not a success or proof of production SLA."
+    },
+    "environment": "Local Docker Desktop; AWS proposed only"
+  },
+  "recovery": {
+    "attempted": 3,
+    "successful": 3,
+    "failed_trials": [],
+    "mean_scrape_observed_ttr_seconds": 19.999000072479248,
+    "trials": [
+      {
+        "trial": 1,
+        "outcome": "automatic_recovery_verified",
+        "manual_cleanup": false,
+        "aws_status": "proposed only",
+        "stop_marker_utc": "2026-11-20T09:22:48.111655Z",
+        "first_failed_probe_utc": "2026-11-20T09:22:52.603000Z",
+        "first_successful_probe_utc": "2026-11-20T09:23:12.602000Z",
+        "alert_received_utc": "2026-11-20T09:23:07.737554Z",
+        "remediation_started_utc": "2026-11-20T09:23:07.749963Z",
+        "remediation_finished_utc": "2026-11-20T09:23:08.552955Z",
+        "stop_to_failed_probe_seconds": 4.491344928741455,
+        "scrape_observed_ttr_seconds": 19.999000072479248,
+        "remediation_execution_seconds": 0.802986,
+        "observation_start_utc": "2026-11-20T09:22:33.111655Z",
+        "observation_finish_utc": "2026-11-20T09:23:13.744742Z",
+        "probe_availability": {
+          "successful_probes": 4,
+          "total_observed_probes": 8,
+          "availability_percent": 50.0,
+          "definition": "successful independent HTTP probes / observed probes in the stated UTC window",
+          "limitation": "Short local observation; missing telemetry is not a success or proof of production SLA."
+        },
+        "monitoring_samples_all_up": true,
+        "monitoring_containers_retained": true,
+        "output": "output/recovery-1-20261120T092247818387Z"
+      },
+      {
+        "trial": 2,
+        "outcome": "automatic_recovery_verified",
+        "manual_cleanup": false,
+        "aws_status": "proposed only",
+        "stop_marker_utc": "2026-11-20T09:23:23.571304Z",
+        "first_failed_probe_utc": "2026-11-20T09:23:27.603000Z",
+        "first_successful_probe_utc": "2026-11-20T09:23:47.597000Z",
+        "alert_received_utc": "2026-11-20T09:23:45.732308Z",
+        "remediation_started_utc": "2026-11-20T09:23:45.746325Z",
+        "remediation_finished_utc": "2026-11-20T09:23:46.646008Z",
+        "stop_to_failed_probe_seconds": 4.031696081161499,
+        "scrape_observed_ttr_seconds": 19.99399995803833,
+        "remediation_execution_seconds": 0.899668,
+        "observation_start_utc": "2026-11-20T09:23:08.571304Z",
+        "observation_finish_utc": "2026-11-20T09:23:49.893092Z",
+        "probe_availability": {
+          "successful_probes": 4,
+          "total_observed_probes": 8,
+          "availability_percent": 50.0,
+          "definition": "successful independent HTTP probes / observed probes in the stated UTC window",
+          "limitation": "Short local observation; missing telemetry is not a success or proof of production SLA."
+        },
+        "monitoring_samples_all_up": true,
+        "monitoring_containers_retained": true,
+        "output": "output/recovery-2-20261120T092323263396Z"
+      },
+      {
+        "trial": 3,
+        "outcome": "automatic_recovery_verified",
+        "manual_cleanup": false,
+        "aws_status": "proposed only",
+        "stop_marker_utc": "2026-11-20T09:23:58.435242Z",
+        "first_failed_probe_utc": "2026-11-20T09:24:02.597000Z",
+        "first_successful_probe_utc": "2026-11-20T09:24:22.601000Z",
+        "alert_received_utc": "2026-11-20T09:24:20.720777Z",
+        "remediation_started_utc": "2026-11-20T09:24:20.732722Z",
+        "remediation_finished_utc": "2026-11-20T09:24:21.571059Z",
+        "stop_to_failed_probe_seconds": 4.161757946014404,
+        "scrape_observed_ttr_seconds": 20.004000186920166,
+        "remediation_execution_seconds": 0.83834,
+        "observation_start_utc": "2026-11-20T09:23:43.435242Z",
+        "observation_finish_utc": "2026-11-20T09:24:23.556598Z",
+        "probe_availability": {
+          "successful_probes": 4,
+          "total_observed_probes": 8,
+          "availability_percent": 50.0,
+          "definition": "successful independent HTTP probes / observed probes in the stated UTC window",
+          "limitation": "Short local observation; missing telemetry is not a success or proof of production SLA."
+        },
+        "monitoring_samples_all_up": true,
+        "monitoring_containers_retained": true,
+        "output": "output/recovery-3-20261120T092358253468Z"
+      }
+    ],
+    "environment": "Local Docker Desktop; AWS proposed only"
+  },
+  "evidence_paths": {
+    "benchmark": "output/benchmark-20261120T092121231834Z/summary.json",
+    "recovery_series": "output/recovery-series-20261120T092425185747Z/summary.json"
+  },
+  "github_repository_url": "Pending authenticated publication"
+}

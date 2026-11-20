@@ -1,0 +1,15 @@
+groups:
+  - name: cloudguard-servicedesk
+    rules:
+      - alert: ServiceDeskUnavailable
+        expr: probe_success{job="servicedesk-http",service="servicedesk",container="cloudguard-servicedesk"} == 0
+        for: 10s
+        labels: {severity: critical}
+        annotations:
+          summary: "The synthetic Service Desk API failed its independent HTTP health probe."
+      - alert: ProbeTelemetryMissing
+        expr: absent(probe_success{job="servicedesk-http"})
+        for: 20s
+        labels: {severity: warning}
+        annotations:
+          summary: "HTTP probe telemetry is missing; availability cannot be inferred."

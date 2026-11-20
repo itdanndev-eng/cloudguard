@@ -1,0 +1,288 @@
+{
+  "id": null,
+  "uid": "cloudguard-service-desk",
+  "title": "CloudGuard Service Desk Reliability",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "refresh": "5s",
+  "tags": [
+    "cloudguard",
+    "synthetic-demo",
+    "local-validation"
+  ],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Independent HTTP health",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cloudguard-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success{job=\"servicedesk-http\"}",
+          "legendFormat": "health",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Successful probes / total probes (15m)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cloudguard-prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum_over_time(probe_success{job=\"servicedesk-http\"}[15m]) / count_over_time(probe_success{job=\"servicedesk-http\"}[15m])",
+          "legendFormat": "availability",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Successful ticket requests / second",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cloudguard-prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(cloudguard_http_requests_total{route=\"/api/tickets\",status=~\"2..\"}[1m]))",
+          "legendFormat": "requests/s",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Ticket endpoint processing latency (histogram estimates)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cloudguard-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cloudguard_http_request_duration_seconds_bucket{route=\"/api/tickets\"}[1m])))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(cloudguard_http_request_duration_seconds_bucket{route=\"/api/tickets\"}[1m])))",
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Ticket endpoint request rate by HTTP status",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cloudguard-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (rate(cloudguard_http_requests_total{route=\"/api/tickets\"}[1m]))",
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Independent HTTP probe history (0 = failed, 1 = successful)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cloudguard-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success{job=\"servicedesk-http\"}",
+          "legendFormat": "HTTP availability",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cloudguard-prometheus"
+          }
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    }
+  ],
+  "annotations": {
+    "list": []
+  }
+}

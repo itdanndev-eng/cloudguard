@@ -1,0 +1,122 @@
+name: cloudguard-original
+
+x-runtime: &runtime
+  image: cloudguard-original-runtime:local
+  build: .
+  init: true
+  read_only: true
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: local
+    options: {max-size: "10m", max-file: "3"}
+
+services:
+  servicedesk:
+    <<: *runtime
+    container_name: cloudguard-servicedesk
+    labels:
+      io.cloudguard.recovery: allowlisted-demo
+    ports: ["127.0.0.1:${CG_API_PORT:-18000}:8000"]
+    networks: [monitoring, control]
+    mem_limit: 128m
+    cpus: 0.75
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  probe:
+    image: prom/blackbox-exporter:v0.29.1
+    command: ["--config.file=/etc/blackbox/config.yml"]
+    volumes: ["./config/blackbox/config.yml:/etc/blackbox/config.yml:ro"]
+    networks: [monitoring]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    mem_limit: 64m
+
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=3d", "--storage.tsdb.retention.size=256MB"]
+    ports: ["127.0.0.1:${CG_PROMETHEUS_PORT:-19090}:9090"]
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus_data:/prometheus
+    networks: [monitoring]
+    restart: unless-stopped
+    mem_limit: 384m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.35.0
+    command: ["--config.file=/etc/alertmanager/config.yml", "--storage.path=/alertmanager", "--cluster.listen-address="]
+    ports: ["127.0.0.1:${CG_ALERTMANAGER_PORT:-19093}:9093"]
+    volumes:
+      - ./config/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    secrets: [recovery_token]
+    networks: [monitoring, control]
+    restart: unless-stopped
+    mem_limit: 128m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  recovery:
+    <<: *runtime
+    user: "0:0"
+    command: ["gunicorn", "--bind", "0.0.0.0:8081", "--workers", "1", "--threads", "4", "--access-logfile", "-", "cloudguard.recovery:create_app()"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - recovery_journal:/var/lib/cloudguard
+    secrets: [recovery_token]
+    networks: [control]
+    mem_limit: 128m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    ports: ["127.0.0.1:${CG_GRAFANA_PORT:-13000}:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: cloudguard
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/servicedesk.json
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    secrets: [grafana_password]
+    networks: [monitoring]
+    restart: unless-stopped
+    mem_limit: 512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  monitoring: {driver: bridge}
+  control: {internal: true}
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  recovery_journal:
+secrets:
+  recovery_token: {file: ./secrets/recovery_token}
+  grafana_password: {file: ./secrets/grafana_password}
