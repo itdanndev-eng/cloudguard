@@ -1,8 +1,8 @@
-# Proposed EC2 demonstration — not deployed
+# AWS EC2 deployment plan
 
-**Status: proposed only. No AWS resources have been created or tested for this project.** Local Docker Desktop results must not be presented as EC2 or CloudWatch results.
+**Status: proposed.** EC2 deployment and CloudWatch integration have not been performed. The published measurements were collected locally on Docker Desktop.
 
-## Proposed service roles
+## Service roles
 
 | AWS component | Proposed role |
 |---|---|
@@ -19,9 +19,9 @@ For a proposed SSH-based demo, the security group needs inbound TCP 22 from the 
 
 The Docker socket must remain a Unix socket mounted only inside the recovery container. Never enable an unauthenticated TCP Docker daemon listener. Docker-group membership and socket access are root-equivalent privileges and are for the trusted operator only.
 
-## Proposed Docker setup on Ubuntu
+## Docker setup on Ubuntu
 
-These are deployment instructions for a future instance, not commands executed against AWS during local implementation. Review the [official Ubuntu Docker installation guide](https://docs.docker.com/engine/install/ubuntu/) when deploying.
+The following commands are intended for a future Ubuntu instance and have not been run on AWS for this project. Review the [official Ubuntu Docker installation guide](https://docs.docker.com/engine/install/ubuntu/) before deployment.
 
 ```bash
 sudo apt-get update
@@ -42,11 +42,18 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 sudo usermod -aG docker "$USER"
 ```
 
-Log out and reconnect so the group change applies. Clone [the private CloudGuard repository](https://github.com/itdanndev-eng/cloudguard) using an authenticated operator workflow; do not put a token in a clone URL, shell script, or source file. Then run the README bootstrap, configuration checks, tests, and Compose startup. Generate new EC2-local secrets rather than copying the Mac's credentials.
+Log out and reconnect so the group change applies, then clone the public repository:
 
-## SSH tunneling from the Mac
+```bash
+git clone https://github.com/itdanndev-eng/cloudguard.git
+cd cloudguard
+```
 
-Use a private key outside the repository. Replace the example key path and EC2 DNS placeholder. These alternate local ports avoid colliding with the Mac's running stack:
+Follow the [quick start](../README.md#quick-start) and [validation workflow](validation.md#validation-workflow) on the instance. Run bootstrap there to generate fresh credentials, and keep secrets and SSH keys out of source control.
+
+## Access through SSH tunnels
+
+Keep the SSH private key outside the repository. Replace the example key path and EC2 DNS placeholder. The alternate local ports below allow access alongside a local CloudGuard stack:
 
 ```bash
 ssh -i /path/to/operator-key.pem -o ExitOnForwardFailure=yes \
@@ -57,17 +64,17 @@ ssh -i /path/to/operator-key.pem -o ExitOnForwardFailure=yes \
   ubuntu@EC2_PUBLIC_DNS
 ```
 
-While this proposed tunnel is open, browse the remote API at `http://127.0.0.1:28000`, Grafana at port 23000, Prometheus at 29090, and Alertmanager at 29093. Read the generated Grafana password on the remote host. No tunnel or security-group rule is needed for the internal recovery handler.
+For a future deployment, this tunnel would provide access to the API at `http://127.0.0.1:28000`, Grafana at port 23000, Prometheus at 29090, and Alertmanager at 29093. Read the generated Grafana password on the remote host. The internal recovery handler needs no forwarded port or inbound rule.
 
-## Proposed storage and evidence handling
+## Storage and evidence
 
 Docker named volumes live on the instance's filesystem, which should be backed by EBS. Prometheus retention is bounded to three days/256 MB. The recovery journal and Grafana data still require storage monitoring. Retain enough free space for image builds, logs, and the journal. Copy ignored `output/` evidence to an approved backup location before terminating the instance; Git does not back up those raw files.
 
-A future EC2 validation must record the actual instance/AMI architecture, resource limits, observation location, timestamps, image/source versions, and independent probe counts. Rerun tests, the benchmark, and recovery trials there; label the new evidence as an actual EC2 run only once it has happened. The present scripts and reports are labeled local Docker Desktop, and all current AWS status remains proposed.
+EC2 validation would need to record the instance/AMI architecture, resource limits, client location, timestamps, image/source versions, and independent probe counts. Run the tests, benchmark, and recovery trials on the instance, then retain that evidence separately from the local Docker Desktop results. AWS validation remains pending.
 
-## Proposed cleanup
+## Cleanup plan
 
-Use `docker compose stop` to pause the future stack while retaining containers and volumes. `docker compose down` removes only this project's containers/networks and retains its named volumes. Obtain approval and back up data before deleting any volume. Before future instance termination, decide whether EBS volumes/snapshots should be retained, review delete-on-termination settings, and export evidence. Release chargeable resources only after review; stopping an instance does not remove storage charges. Review retained EBS, snapshots, public IPv4 addresses, and CloudWatch logs after a future demo. No AWS cleanup is required for the local-only work completed here.
+Use `docker compose stop` to pause the stack while retaining containers and volumes. `docker compose down` removes this project's containers and networks while retaining named volumes. Back up volumes and evidence before deleting data. Before terminating a future instance, review EBS delete-on-termination settings and decide which volumes and snapshots to retain. Include retained EBS storage, snapshots, public IPv4 addresses, and CloudWatch logs in the cleanup review; stopping an instance does not remove storage charges. No AWS resources have been created for this project.
 
 ## Official design references
 

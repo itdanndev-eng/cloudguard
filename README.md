@@ -1,18 +1,25 @@
-# CloudGuard — Service Desk Reliability Demo
+# CloudGuard
 
-**Advanced Cloud Computing mini project. AWS deployment: proposed only.**
+**Availability monitoring and automated recovery for a Service Desk API.**
 
-Private GitHub repository: [itdanndev-eng/cloudguard](https://github.com/itdanndev-eng/cloudguard), branch `main`.
+CloudGuard runs a small IT operations API alongside independent HTTP probes, Prometheus, Alertmanager, and Grafana. When a controlled container stop makes the API unavailable, an internal recovery handler starts the allowlisted workload and verifies its HTTP health.
 
-CloudGuard is a small IT operations application and reliability experiment. An operator reads synthetic incident tickets while an independent HTTP probe checks application health. A verified outage triggers a constrained recovery handler that starts the stopped demo container and checks HTTP health.
+**Project status:** Validated locally on Docker Desktop with Linux ARM64 containers. AWS EC2 deployment is **proposed**.
 
-## Industry use case
+[Quick start](#quick-start) · [Architecture](#architecture) · [Local results](#local-results) · [Documentation](#documentation)
 
-An IT Service Desk needs visibility into open incidents and a way to recover an unavailable ticket API. This demo exposes a read-only ticket queue with status, priority, and result-limit filters. Every response identifies the records as **synthetic-demo**. There are no real customers, employees, production tickets, external integrations, or write operations.
+## What it demonstrates
 
-## Local setup
+- A read-only ticket API with status, priority, and result-limit filters, backed by clearly labeled synthetic data.
+- Independent availability probes alongside application latency and request-rate metrics.
+- Authenticated, allowlisted recovery with container identity checks, duplicate handling, and overlap prevention.
+- A provisioned Grafana dashboard and repeatable scripts for load tests and recovery trials.
 
-Requirements: Docker Desktop with Compose v2+, Python 3.9+ for operator scripts, and sufficient free disk space. Linux ARM64 is the locally tested container platform; other platforms need their own verification.
+The use case is a small IT Service Desk that needs visibility into open incidents and a way to restore an unavailable ticket API. The records represent fictional operational scenarios; every response identifies its data source as `synthetic-demo`.
+
+## Quick start
+
+You need a running Docker Desktop installation with Compose v2+, Python 3.9+ for the operator scripts, and free disk space for images and volumes. Linux ARM64 is the validated container platform; other platforms remain unverified.
 
 ```bash
 git clone https://github.com/itdanndev-eng/cloudguard.git
@@ -21,103 +28,170 @@ python3 scripts/bootstrap.py
 docker compose config --quiet
 docker compose up -d --build
 docker compose ps
+```
+
+Check the API:
+
+```bash
 curl http://127.0.0.1:18000/health
 curl 'http://127.0.0.1:18000/api/tickets?status=open&priority=P1&limit=20'
 ```
 
-Bootstrap creates ignored local secret files and retains existing credentials on subsequent runs. Grafana's username is `cloudguard`; read `secrets/grafana_password` locally for the generated password. Never commit or paste those files into a presentation. `.env.example` contains only optional port settings. Local interfaces bind to `127.0.0.1`.
+Bootstrap generates local credentials under ignored `secrets/` and retains them on subsequent runs. Grafana uses the username `cloudguard`; read `secrets/grafana_password` locally for its generated password. Keep credential files out of commits and screenshots.
 
-| Interface | Local URL |
+### Local interfaces
+
+| Interface | URL |
 |---|---|
 | Service Desk API | http://127.0.0.1:18000/api/tickets?status=open&limit=20 |
-| API health | http://127.0.0.1:18000/health |
+| Health check | http://127.0.0.1:18000/health |
 | Prometheus targets | http://127.0.0.1:19090/targets |
 | Prometheus alerts | http://127.0.0.1:19090/alerts |
 | Alertmanager | http://127.0.0.1:19093 |
-| Provisioned Grafana dashboard | http://127.0.0.1:13000/d/cloudguard-service-desk |
+| Grafana dashboard | http://127.0.0.1:13000/d/cloudguard-service-desk |
 
-## Architecture and recovery flow
+All published interfaces bind to `127.0.0.1`. Optional port settings are in [.env.example](.env.example); the measurement scripts currently expect the default ports above.
+
+### API endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Application status, service identity, and synthetic-data label |
+| GET | `/api/tickets` | Filtered synthetic ticket queue |
+| GET | `/metrics` | Prometheus request counters and latency histograms |
+
+Ticket filters accept `status=open|in_progress|resolved`, `priority=P1|P2|P3`, and an integer `limit` from 1 to 100. The default limit is 20. Invalid filters return HTTP 400.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-  Operator -->|GET synthetic tickets| API[Service Desk API]
-  Probe[Independent HTTP probe] -->|GET /health| API
+  Operator -->|GET tickets| API[Service Desk API]
+  Probe[Blackbox Exporter] -->|HTTP health probe| API
   Prom[Prometheus] -->|probe_success| Probe
-  Prom -->|request counters and latency histograms| API
-  Prom -->|ServiceDeskUnavailable| AM[Alertmanager]
-  AM -->|internal authenticated webhook| Recovery[Allowlisted recovery handler]
-  Recovery -->|inspect identity, start stopped container| Engine[Local Docker engine]
-  Engine --> API
+  Prom -->|request metrics| API
+  Prom -->|firing alert| AM[Alertmanager]
+  AM -->|authenticated internal webhook| Recovery[Recovery handler]
+  Recovery -->|inspect and start allowlisted container| Docker[Docker engine]
+  Docker --> API
   Recovery -->|verify HTTP health| API
-  Grafana --> Prom
+  Grafana -->|query metrics| Prom
 ```
 
-Prometheus scrapes every 5 seconds and evaluates alerts every 5 seconds. The independent Blackbox Exporter keeps returning `probe_success=0` while the API is stopped; its own scrape remains available. An API `/metrics` scrape alone would disappear with the workload and does not substitute for HTTP availability. `ServiceDeskUnavailable` requires a failed HTTP probe for 10 seconds. Alertmanager waits 2 seconds for a new group and forwards the firing alert over the internal control network. Missing probe telemetry raises a separate observe-only warning.
+| Service | Role |
+|---|---|
+| Service Desk API | Serves synthetic tickets and exports request metrics |
+| Blackbox Exporter | Probes HTTP health independently of the workload |
+| Prometheus | Collects metrics and evaluates alert rules |
+| Alertmanager | Routes the intended outage alert to recovery |
+| Recovery handler | Verifies container identity, starts the stopped workload, and checks HTTP health |
+| Grafana | Displays availability, latency, and request rate |
 
-The recovery handler accepts only authenticated internal Alertmanager batches. It ignores resolved alerts and mismatched alert names, service names, container names, jobs, and probe URLs. Before acting, it checks the actual Docker container name and Compose/custom labels. It can inspect and **start only `cloudguard-servicedesk`**; the client contains no generic restart/delete API. A nonblocking process lock prevents overlapping actions. Repeated alerts for a healthy running container have no effect. A running unhealthy workload is reported as failed rather than repeatedly restarted. Successful remediation requires the expected HTTP health response.
+### Detection and recovery
 
-The recovery handler has **no published host port**. Its socket mount is private to that service, and there is no public restart endpoint or TCP Docker engine listener. The socket still grants substantial engine authority if the recovery container is compromised: a read-only socket bind does not make the Docker API read-only. This is a trusted local course demonstration, not a production multi-tenant recovery control plane. Recovery uses one Gunicorn worker with four threads so the process lock covers every request. Changing to multiple workers would require an inter-process/distributed lock.
+1. Prometheus scrapes and evaluates rules every **5 seconds**. Application availability is measured by `probe_success{job="servicedesk-http"}`; `up` for that job measures the probe exporter's reachability.
+2. After a failed HTTP probe persists for **10 seconds**, `ServiceDeskUnavailable` fires. Alertmanager uses a **2-second** initial group wait before forwarding it.
+3. The handler validates the bearer token, firing status, expected alert labels, container name, and Docker labels. It can start only `cloudguard-servicedesk`.
+4. A process lock prevents overlapping actions. Repeated alerts for a healthy container have no effect. Recovery succeeds only after the expected HTTP health response is verified.
 
-The monitoring bridge supports localhost publication. A separate internal control network contains the API, Alertmanager, and recovery service. Stopping the API does not stop the monitoring or recovery containers.
+Monitoring and recovery run separately from the API. The probe continues reporting availability during a workload outage. Missing probe telemetry raises an observe-only warning.
 
-## Tests and validation
+### Recovery access
+
+The recovery handler has no published host port. Alertmanager reaches it through the internal control network, and only the handler mounts the Unix Docker socket. Resolved alerts and unknown targets are ignored. A running but unhealthy container is reported as failed; this action is limited to starting a stopped, existing container.
+
+Docker socket access grants substantial engine authority, including through a read-only socket bind. This design assumes trusted operators. The handler uses one Gunicorn worker with four threads so its process lock covers all requests; multiple workers would require a shared lock.
+
+## Run the experiments
+
+Start from the healthy stack in the quick start. The scripts verify HTTP health, three healthy Prometheus targets, and a successful probe baseline before issuing load or stopping the workload.
 
 ```bash
-docker run --rm --network none --read-only --tmpfs /tmp \
-  cloudguard-runtime:local python -m unittest discover -s tests -v
+python3 scripts/lab.py benchmark --duration 20 --concurrency 4
+python3 scripts/lab.py recover --trials 3
+```
+
+The benchmark uses four closed-loop HTTP/1.1 keep-alive workers with no think time against `GET /api/tickets?status=open&limit=20`. It validates responses and records request count, errors, throughput, and client round-trip average/p95/p99 latency.
+
+The recovery command runs up to three trials. Each records UTC immediately before `docker stop cloudguard-servicedesk`, then correlates raw HTTP probe samples with alert receipt and remediation events. Successful trials require automatic recovery and retained monitoring containers. A failed trial is recorded explicitly and ends the series. Any manual start is cleanup and remains a failed trial.
+
+Raw records, logs, container snapshots, source fingerprints, and summaries are written under ignored `output/`. Back up this directory separately. The tracked [measurement summary](docs/measured-local.json) contains the published aggregates and trial timestamps.
+
+## Local results
+
+Recorded on **20 November 2026**, using Docker Desktop and Linux ARM64 containers. The load client ran on the Mac host; the API had a **0.75-CPU** container limit.
+
+| HTTP benchmark | Measured result |
+|---|---:|
+| Duration | 20.031 s |
+| Completed requests | 25,641 |
+| Errors | 0 |
+| Throughput | 1,280.08 requests/s |
+| Average client latency | 3.123 ms |
+| p95 / p99 client latency | 3.575 ms / 44.010 ms |
+| Successful availability probes | 4/4 (100% of observed probes) |
+
+**Automatic recovery succeeded in 3/3 trials**, with no manual restarts or failed trials. Scrape-observed TTR was **19.999 s**, **19.994 s**, and **20.004 s**; the mean was **19.999 s**. Remediation execution took **0.803 s**, **0.900 s**, and **0.838 s**, respectively.
+
+TTR is measured from the first failed HTTP probe sample to the first subsequent successful sample. Remediation execution covers the handler's start action through verified HTTP health. Five-second sampling limits the precision of outage boundaries. Latency percentiles use nearest rank over all attempts; Grafana's in-process histogram estimates measure a different interval from client round-trip latency.
+
+These are short local observations. The benchmark had only four availability probes, and the recovery windows deliberately include outages. They establish neither monthly SLA compliance nor AWS performance. See [detailed results and observation windows](docs/presentation-results.md).
+
+### Proposed service objectives
+
+| Objective | Proposed target |
+|---|---|
+| Monthly availability | 99.9% successful HTTP probes |
+| Client p95 latency | Below 250 ms under a defined light workload |
+| Controlled-stop recovery | Scrape-observed TTR within 45 seconds |
+
+These are design objectives, not contractual guarantees. A 99.9% objective over a fixed 30-day month allows 2,592 seconds of downtime; month-long compliance has not been measured.
+
+## Validation
+
+The recorded local validation includes **20 passing tests**, native Compose/Prometheus/Alertmanager configuration checks, healthy targets, and authenticated Grafana dashboard/datasource checks.
+
+```bash
+docker run --rm --network none --read-only --tmpfs /tmp   cloudguard-runtime:local python -m unittest discover -s tests -v
 docker compose exec -T prometheus promtool check config /etc/prometheus/prometheus.yml
 docker compose exec -T alertmanager amtool check-config /etc/alertmanager/config.yml
 ```
 
-Tests cover API health and filtering, read-only behavior, normalized request metrics, authentication, allowlisting, container identity checks, idempotency, overlap prevention, failed HTTP verification, percentile definitions, and successful-probe availability calculations. See [validation details](docs/validation.md) for what actually ran locally.
+See [validation coverage](docs/validation.md) for the test scope and evidence layout.
 
-## Reproduce the benchmark
+## Scope and limitations
+
+- Tickets are synthetic, in memory, and read only. The demo API has no authentication or durable ticket database.
+- The design uses one Docker host, one allowlisted workload, and one recovery process. Host, daemon, and monitoring failures are outside its recovery scope.
+- Recovery starts an existing stopped container. Deleted containers and running-unhealthy processes need separate remediation.
+- Application restarts reset request counters. Prometheus `rate()` handles resets, while application metric scrapes have gaps during outages.
+- File-based Compose secrets and Docker-group membership require trusted local access.
+- Platform validation covers local Linux ARM64 containers. AWS deployment and CloudWatch integration remain proposed.
+
+## Proposed AWS deployment
+
+The [EC2 deployment plan](docs/ec2-proposed.md) covers a future single-host demo with EC2, EBS-backed storage, restricted VPC/security-group access, SSH tunnels, and a proposed CloudWatch integration. AWS resources have not been created or tested for this project.
+
+## Stop and clean up
 
 ```bash
-python3 scripts/lab.py benchmark --duration 20 --concurrency 4
+docker compose stop  # Retain containers and volumes
+docker compose down  # Remove this stack's containers/networks; retain named volumes
 ```
 
-The workload is a closed-loop, four-worker HTTP/1.1 keep-alive client with no think time, requesting `GET /api/tickets?status=open&limit=20`. It validates the synthetic response. Reports include requested and measured duration, request count, errors, throughput, and client round-trip average/p95/p99 latency. Percentiles use nearest rank over all completed attempts, including errors/timeouts. The client runs on the host Mac; the API has a 0.75-CPU container limit. Grafana's histogram percentiles estimate in-process latency and need not equal client round-trip percentiles.
+Back up persistent volumes and `output/` before deleting data. Use project-scoped cleanup rather than a global Docker prune.
 
-Raw request records, independent probe samples, application logs, container details, and the summary are saved in a new ignored `output/benchmark-<UTC>/` directory.
+## Documentation
 
-## Reproduce controlled recovery
+- [Demo and measured results](docs/presentation-results.md)
+- [Local validation](docs/validation.md)
+- [Proposed EC2 deployment](docs/ec2-proposed.md)
+- [Machine-readable measurement summary](docs/measured-local.json)
 
-```bash
-python3 scripts/lab.py recover --trials 3
-```
+Issues and pull requests are welcome. Include relevant test results and identify the environment used for any new measurements. Keep credentials and raw experiment output out of commits.
 
-This command performs at most three trials, establishing healthy HTTP and monitoring baselines before each. It records UTC immediately before `docker stop cloudguard-servicedesk`, waits for automatic recovery, and correlates the independent raw probe samples with the handler's structured journal. A manual stop suppresses Docker's normal restart-policy behavior so the experiment measures the alert/recovery path. No manual start is used for a successful trial.
+## License
 
-Each trial saves the stop marker, first failed probe, alert receipt, remediation start and finish, first successful probe, Docker events, relevant service logs, container snapshots, and raw probe/monitoring samples. It also checks that monitoring container identities and start times were retained. A timeout, missing success record, or monitoring restart is a failed trial. A manual start may restore a still-stopped workload **only as cleanup after a failed trial**, which remains failed; subsequent trials stop. The mean uses only completed successful trials, and failed attempts are listed explicitly.
+Project code is available under the [MIT License](LICENSE). Dependency licenses and notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-| Measurement | Definition |
-|---|---|
-| Detection interval | Pre-stop UTC marker to first failed HTTP probe sample |
-| Scrape-observed TTR | First failed probe sample to first subsequent successful probe sample |
-| Remediation execution | Handler's remediation-start event to verified HTTP recovery finish |
-| Observed availability | Successful independent probe samples / all observed probe samples within the stated UTC window |
-
-Raw range-vector queries preserve the recorded sample timestamps. Missing telemetry is not counted as a successful probe. Sampling occurs every 5 seconds, so transitions between samples remain uncertain. The short observation-window availability is not a production SLA. The evidence packet includes a runtime/configuration source fingerprint; raw evidence is ignored by Git and must be backed up separately.
-
-## Proposed targets and measured local results
-
-Proposed objectives for a future deployed Service Desk are **99.9% monthly successful HTTP probes**, ticket endpoint **p95 client latency below 250 ms** under a defined light workload, and **scrape-observed TTR within 45 seconds** for this specific controlled-stop scenario. These are project targets, not established contractual guarantees or AWS results. A fixed 30-day 99.9% objective allows 2,592 seconds of downtime, but the local experiment cannot demonstrate month-long compliance.
-
-Verified benchmark and recovery results for this implementation are documented in [presentation results](docs/presentation-results.md). AWS EC2 and CloudWatch deployment remains **proposed only**.
-
-## Limitations
-
-- Synthetic, in-memory, read-only tickets; no authentication, durable ticket database, or real business workload.
-- Single Docker host, one allowlisted workload, one recovery process. A host, Docker daemon, or monitoring outage cannot be repaired by this design.
-- Recovery starts a stopped existing container; it does not recreate deleted containers or repair a running but unhealthy process.
-- Short closed-loop load test and at most three local trials are not a capacity study, statistically robust tail-latency study, or production SLA proof.
-- Restarts reset application counters; Prometheus `rate()` handles counter resets but an outage still produces scrape gaps for application metrics.
-- Dependency image license/notice files remain with their upstream distributions; see [third-party notices](THIRD_PARTY_NOTICES.md).
-- Local runtime secrets use file-based Compose secrets, not a managed secret store. Docker-group membership and the recovery socket require trusted operator access.
-
-## Proposed EC2 demo and cleanup
-
-The [EC2 deployment guide](docs/ec2-proposed.md) describes Docker setup, EBS storage, restricted security groups, SSH tunnels, and the proposed CloudWatch role. No AWS resources have been created or verified.
-
-For local cleanup, `docker compose stop` retains containers and volumes. `docker compose down` removes this stack's containers and networks while retaining named volumes. Delete volumes only after backing up evidence and obtaining explicit approval. Never use a global prune to clean this project or delete the earlier workspace's data.
+Developed for an Advanced Cloud Computing project.
