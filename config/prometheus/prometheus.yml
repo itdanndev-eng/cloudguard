@@ -3,7 +3,7 @@ global:
   scrape_timeout: 3s
   evaluation_interval: 5s
   external_labels:
-    project: cloudguard-original
+    project: cloudguard-demo
 rule_files: ["/etc/prometheus/rules.yml"]
 alerting:
   alertmanagers:

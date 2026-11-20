@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Original CloudGuard load and recovery experiments; all raw evidence stays in output/."""
+"""CloudGuard load and recovery experiments; all raw evidence stays in output/."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone

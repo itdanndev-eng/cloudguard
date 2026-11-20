@@ -2,7 +2,7 @@
 
 **Environment: Docker Desktop on this Mac, Linux ARM64 containers. AWS deployment is proposed only.**
 
-The original runtime image was built locally from the pinned Python base and locked requirements. Native Compose validation passed. The final automated suite has 20 passing tests: API behavior, authentication, allowlisting, identity checks, overlap prevention, idempotency, HTTP verification failure, and measurement math. Development testing identified and corrected duplicate Flask health-route registration before measurement.
+The runtime image was built locally from the pinned Python base and locked requirements. Native Compose validation passed. The final automated suite has 20 passing tests: API behavior, authentication, allowlisting, identity checks, overlap prevention, idempotency, HTTP verification failure, and measurement math. Development testing identified and corrected duplicate Flask health-route registration before measurement.
 
 Commands actually executed:
 
@@ -10,7 +10,7 @@ Commands actually executed:
     python3 scripts/build_dashboard.py
     docker compose config --quiet
     docker compose build
-    docker run --rm --network none --read-only --tmpfs /tmp cloudguard-original-runtime:local python -m unittest discover -s tests -v
+    docker run --rm --network none --read-only --tmpfs /tmp cloudguard-runtime:local python -m unittest discover -s tests -v
     docker compose up -d --no-build
     docker compose exec -T prometheus promtool check config /etc/prometheus/prometheus.yml
     docker compose exec -T alertmanager amtool check-config /etc/alertmanager/config.yml

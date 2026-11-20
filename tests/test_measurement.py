@@ -19,7 +19,7 @@ class MeasurementTests(unittest.TestCase):
         self.assertIsNone(probe_availability([])["availability_percent"])
 
     @patch("scripts.lab.query")
-    def test_raw_window_preserves_original_timestamps(self, query):
+    def test_raw_window_preserves_sample_timestamps(self, query):
         query.return_value = {"data": {"result": [{"values": [[9.9, "1"], [10.2, "0"], [12.7, "1"], [14, "1"]]}]}}
         _, points = window("probe_success", 10, 13)
         self.assertEqual(points, [[10.2, "0"], [12.7, "1"]])

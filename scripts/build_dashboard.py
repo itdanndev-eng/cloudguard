@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the original, provisioned CloudGuard dashboard."""
+"""Generate the provisioned CloudGuard dashboard."""
 import json
 from pathlib import Path
 

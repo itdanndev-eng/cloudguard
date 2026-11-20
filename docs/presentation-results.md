@@ -6,11 +6,11 @@ GitHub repository: [itdanndev-eng/cloudguard](https://github.com/itdanndev-eng/c
 
 ## Slide-ready project statement
 
-CloudGuard demonstrates reliability engineering for a small IT Service Desk. An original read-only API serves explicitly synthetic incident tickets. Independent HTTP probes detect an outage; Prometheus and Alertmanager route it to an authenticated internal handler, which starts only the allowlisted demo container and verifies HTTP health.
+CloudGuard demonstrates reliability engineering for a small IT Service Desk. A read-only API serves explicitly synthetic incident tickets. Independent HTTP probes detect an outage; Prometheus and Alertmanager route it to an authenticated internal handler, which starts only the allowlisted demo container and verifies HTTP health.
 
 ## Verified implementation
 
-- Original application, configuration, recovery handler, dashboard, tests, and measurement tools.
+- Application, configuration, recovery handler, dashboard, tests, and measurement tools.
 - 20 automated tests pass. Compose, Prometheus, and Alertmanager configuration validation passes.
 - Dashboard provisioning and Prometheus datasource connectivity verified through authenticated Grafana APIs.
 - Internal recovery rejects unauthenticated requests; no published recovery port or TCP Docker socket.

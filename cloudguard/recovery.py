@@ -16,7 +16,7 @@ CONTAINER = "cloudguard-servicedesk"
 HEALTH_URL = "http://servicedesk:8000/health"
 EXPECTED = {"alertname": "ServiceDeskUnavailable", "job": "servicedesk-http",
             "service": "servicedesk", "container": CONTAINER, "instance": HEALTH_URL}
-LABELS = {"com.docker.compose.project": "cloudguard-original",
+LABELS = {"com.docker.compose.project": "cloudguard-demo",
           "com.docker.compose.service": "servicedesk", "io.cloudguard.recovery": "allowlisted-demo"}
 
 

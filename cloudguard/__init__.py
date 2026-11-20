@@ -1,1 +1,1 @@
-"""Original CloudGuard Service Desk reliability demonstration."""
+"""CloudGuard Service Desk reliability demonstration."""

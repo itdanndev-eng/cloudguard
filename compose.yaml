@@ -1,7 +1,7 @@
-name: cloudguard-original
+name: cloudguard-demo
 
 x-runtime: &runtime
-  image: cloudguard-original-runtime:local
+  image: cloudguard-runtime:local
   build: .
   init: true
   read_only: true

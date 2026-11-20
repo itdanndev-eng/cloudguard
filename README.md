@@ -4,7 +4,7 @@
 
 Private GitHub repository: [itdanndev-eng/cloudguard](https://github.com/itdanndev-eng/cloudguard), branch `main`.
 
-CloudGuard is an original, small IT operations application and reliability experiment. An operator reads synthetic incident tickets while an independent HTTP probe checks application health. A verified outage triggers a constrained recovery handler that starts the stopped demo container and checks HTTP health. The application, configuration, handler, tests, dashboard, and measurement tools were written for this implementation. No earlier repository implementation, screenshots, logs, or measurements are used as results here.
+CloudGuard is a small IT operations application and reliability experiment. An operator reads synthetic incident tickets while an independent HTTP probe checks application health. A verified outage triggers a constrained recovery handler that starts the stopped demo container and checks HTTP health.
 
 ## Industry use case
 
@@ -64,7 +64,7 @@ The monitoring bridge supports localhost publication. A separate internal contro
 
 ```bash
 docker run --rm --network none --read-only --tmpfs /tmp \
-  cloudguard-original-runtime:local python -m unittest discover -s tests -v
+  cloudguard-runtime:local python -m unittest discover -s tests -v
 docker compose exec -T prometheus promtool check config /etc/prometheus/prometheus.yml
 docker compose exec -T alertmanager amtool check-config /etc/alertmanager/config.yml
 ```
@@ -98,7 +98,7 @@ Each trial saves the stop marker, first failed probe, alert receipt, remediation
 | Remediation execution | Handler's remediation-start event to verified HTTP recovery finish |
 | Observed availability | Successful independent probe samples / all observed probe samples within the stated UTC window |
 
-Raw range-vector queries preserve the original sample timestamps. Missing telemetry is not counted as a successful probe. Sampling occurs every 5 seconds, so transitions between samples remain uncertain. The short observation-window availability is not a production SLA. The evidence packet includes a runtime/configuration source fingerprint; raw evidence is ignored by Git and must be backed up separately.
+Raw range-vector queries preserve the recorded sample timestamps. Missing telemetry is not counted as a successful probe. Sampling occurs every 5 seconds, so transitions between samples remain uncertain. The short observation-window availability is not a production SLA. The evidence packet includes a runtime/configuration source fingerprint; raw evidence is ignored by Git and must be backed up separately.
 
 ## Proposed targets and measured local results
 
