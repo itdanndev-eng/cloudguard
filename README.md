@@ -2,6 +2,8 @@
 
 **Advanced Cloud Computing mini project. AWS deployment: proposed only.**
 
+Private GitHub repository: [itdanndev-eng/cloudguard](https://github.com/itdanndev-eng/cloudguard), branch `main`.
+
 CloudGuard is an original, small IT operations application and reliability experiment. An operator reads synthetic incident tickets while an independent HTTP probe checks application health. A verified outage triggers a constrained recovery handler that starts the stopped demo container and checks HTTP health. The application, configuration, handler, tests, dashboard, and measurement tools were written for this implementation. No earlier repository implementation, screenshots, logs, or measurements are used as results here.
 
 ## Industry use case
@@ -13,6 +15,8 @@ An IT Service Desk needs visibility into open incidents and a way to recover an 
 Requirements: Docker Desktop with Compose v2+, Python 3.9+ for operator scripts, and sufficient free disk space. Linux ARM64 is the locally tested container platform; other platforms need their own verification.
 
 ```bash
+git clone https://github.com/itdanndev-eng/cloudguard.git
+cd cloudguard
 python3 scripts/bootstrap.py
 docker compose config --quiet
 docker compose up -d --build

@@ -42,7 +42,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 sudo usermod -aG docker "$USER"
 ```
 
-Log out and reconnect so the group change applies. Clone the confirmed private GitHub repository using an authenticated operator workflow; do not put a token in a clone URL, shell script, or source file. Then run the README bootstrap, configuration checks, tests, and Compose startup. Generate new EC2-local secrets rather than copying the Mac's credentials.
+Log out and reconnect so the group change applies. Clone [the private CloudGuard repository](https://github.com/itdanndev-eng/cloudguard) using an authenticated operator workflow; do not put a token in a clone URL, shell script, or source file. Then run the README bootstrap, configuration checks, tests, and Compose startup. Generate new EC2-local secrets rather than copying the Mac's credentials.
 
 ## SSH tunneling from the Mac
 

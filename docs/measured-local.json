@@ -123,5 +123,5 @@
     "benchmark": "output/benchmark-20261120T092121231834Z/summary.json",
     "recovery_series": "output/recovery-series-20261120T092425185747Z/summary.json"
   },
-  "github_repository_url": "Pending authenticated publication"
+  "github_repository_url": "https://github.com/itdanndev-eng/cloudguard"
 }

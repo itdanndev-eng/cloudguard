@@ -2,7 +2,7 @@
 
 **Verified local implementation. AWS deployment is proposed only.**
 
-GitHub repository URL: pending authenticated publication.
+GitHub repository: [itdanndev-eng/cloudguard](https://github.com/itdanndev-eng/cloudguard) (private), branch `main`.
 
 ## Slide-ready project statement
 
